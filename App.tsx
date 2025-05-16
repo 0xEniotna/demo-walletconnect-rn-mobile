@@ -17,18 +17,19 @@ import {
 import UniversalProvider from '@walletconnect/universal-provider';
 import { SessionTypes } from '@walletconnect/types';
 
+// Define metadata globally
+const metadata = {
+  name: 'Wallet connect Test',
+  description: 'Test app for connecting to Argent Mobile',
+  url: 'https://walletconnect.com/',
+  icons: ['https://avatars.githubusercontent.com/u/37784886'],
+};
+
 const initializeProvider = async () => {
   try {
     console.log('Initializing provider...');
 
-    const projectId = 'your wallet connect project id';
-
-    const metadata = {
-      name: 'Wallet connect Test',
-      description: 'Test app for connecting to Argent Mobile',
-      url: 'https://walletconnect.com/',
-      icons: ['https://avatars.githubusercontent.com/u/37784886'],
-    };
+    const projectId = ''; // walletconnect project id
 
     const providerInstance = await UniversalProvider.init({
       projectId,
@@ -71,6 +72,30 @@ const createEthTransferTransaction = (accountAddress: string) => ({
   },
 });
 
+const newCalldata = [
+  {
+    to: '0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d',
+    selector:
+      '0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c',
+    calldata: [
+      '0x44aa20c51f815974487cbe06ae547a16690d4ca7f8c703aa8bbffe6d7393d46',
+      '0x56bc75e2d63100000',
+      '0x0',
+    ],
+  },
+  {
+    to: '0x44aa20c51f815974487cbe06ae547a16690d4ca7f8c703aa8bbffe6d7393d46',
+    selector: '0xd5c0f26335ab142eb700850eded4619418b0f6e98c5b92a6347b68d2f2a0c',
+    calldata: [
+      '0x2d09ca739a6d3a5bed6ae8a3190db0966d57f4c4fff34e19738990596879904',
+      '0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d',
+      '0x56bc75e2d63100000',
+      '0x0',
+      '0x2a4c56a99f93d0b19f9a3b09640cb9fd1f4c426474a85dedfec573849ab6235',
+    ],
+  },
+];
+
 export default function App() {
   const [provider, setProvider] = useState<ProviderInstance | null>(null);
   const [session, setSession] = useState<SessionTypes.Struct | null>(null);
@@ -80,8 +105,25 @@ export default function App() {
   const [wcUri, setWcUri] = useState<string | null>(null);
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
   const [selectedNetwork, setSelectedNetwork] = useState<'MAINNET' | 'SEPOLIA'>(
-    'MAINNET'
+    'SEPOLIA'
   );
+
+  // Add useEffect for Linking event listener
+  useEffect(() => {
+    // Handle initial URL (if app was opened via a deep link)
+    const getUrlAsync = async () => {
+      const initialUrl = await Linking.getInitialURL();
+    };
+    getUrlAsync();
+
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      console.log('Subsequent URL received:', url);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   // Set up provider on mount
   useEffect(() => {
@@ -111,12 +153,10 @@ export default function App() {
       });
   }, []);
 
-  // Try to open wallet with URI
   const openWallet = async (uri: string) => {
     const encodedUri = encodeURIComponent(uri);
 
-    // We know Argent works, so let's use that as the primary option
-    const argentScheme = `argent://wc?uri=${encodedUri}`;
+    const argentScheme = `argent-dev://wc?uri=${encodedUri}`;
     console.log('Opening Argent with scheme:', argentScheme);
 
     try {
@@ -144,14 +184,12 @@ export default function App() {
 
     try {
       console.log('Attempting to connect...');
-      console.log(`Using Argent Mobile chain ID: starknet:SNMAIN`);
+      console.log(`Using Argent Mobile chain ID: starknet:SNSEPOLIA`);
 
-      // Create a connection with the wallet
-      // Include all Starknet methods from the documentation
       const { uri, approval } = await provider.client.connect({
         requiredNamespaces: {
           starknet: {
-            chains: ['starknet:SNMAIN'], // Use Argent's specific chain ID format
+            chains: ['starknet:SNSEPOLIA'], // Use Argent specific chain ID format
             methods: [
               'starknet_account',
               'starknet_requestAddInvokeTransaction',
@@ -159,14 +197,18 @@ export default function App() {
             events: ['accountsChanged', 'chainChanged'],
           },
         },
+        sessionProperties: {
+          url: 'starknetrntest://wc',
+          name: metadata.name,
+          description: metadata.description,
+          icons: metadata.icons[0],
+        },
       });
 
       // Store the URI for deep linking
       if (uri) {
         console.log('WalletConnect URI:', uri);
         setWcUri(uri);
-
-        // Directly open Argent since we know it works
         openWallet(uri);
       } else {
         console.warn('No URI available for wallet connection');
@@ -179,7 +221,6 @@ export default function App() {
       const session = await approval();
       console.log('Session approved:', session);
 
-      // If we have a session, extract the account address
       if (session && session.namespaces.starknet?.accounts?.length > 0) {
         const accountAddress =
           session.namespaces.starknet.accounts[0].split(':')[2]; // Extract address
@@ -203,7 +244,7 @@ export default function App() {
     }
   };
 
-  // Disconnect from Argent Mobile
+  // Disconnect from  Mobile
   const handleDisconnect = async () => {
     if (!provider || !session) {
       console.error(
@@ -225,8 +266,7 @@ export default function App() {
     }
   };
 
-  // Add this new function in the App component
-  const handleEthTransfer = async () => {
+  const handleCalldata = async () => {
     if (!provider || !account || !session) {
       setError('Provider or account not initialized');
       return;
@@ -234,14 +274,10 @@ export default function App() {
 
     try {
       setError(null);
-      console.log('Requesting ETH transfer transaction...');
+      console.log('Requesting transaction with custom calldata...');
+      console.log('Custom calldata:', JSON.stringify(newCalldata, null, 2));
 
-      // Create transaction parameters
-      const transaction = createEthTransferTransaction(account);
-      console.log('ETH transfer params:', JSON.stringify(transaction, null, 2));
-
-      // First, try to open the wallet app
-      const argentScheme = `argent://`;
+      const argentScheme = `argent-dev://`;
       try {
         await Linking.openURL(argentScheme);
         console.log('Opened Argent app before transaction');
@@ -256,7 +292,63 @@ export default function App() {
       const result = await provider.client.request<StarknetTransactionResponse>(
         {
           topic: session.topic,
-          chainId: 'starknet:SNMAIN',
+          chainId: 'starknet:SNSEPOLIA',
+          request: {
+            method: 'starknet_requestAddInvokeTransaction',
+            params: {
+              accountAddress: account,
+              executionRequest: {
+                calls: newCalldata.map((call) => ({
+                  contractAddress: call.to,
+                  entrypoint: call.selector,
+                  calldata: call.calldata,
+                })),
+              },
+            },
+          },
+        }
+      );
+
+      console.log('Custom calldata transaction result:', result);
+      if (result && result.transaction_hash) {
+        setTransactionHash(result.transaction_hash);
+      }
+    } catch (err: any) {
+      console.error('Error requesting custom calldata transaction:', err);
+      setError(
+        'Custom calldata transaction failed: ' +
+          (err?.message || 'Unknown error')
+      );
+    }
+  };
+
+  const handleEthTransfer = async () => {
+    if (!provider || !account || !session) {
+      setError('Provider or account not initialized');
+      return;
+    }
+
+    try {
+      setError(null);
+      console.log('Requesting ETH transfer transaction...');
+
+      const transaction = createEthTransferTransaction(account);
+      console.log('ETH transfer params:', JSON.stringify(transaction, null, 2));
+
+      const argentScheme = `argent-dev://`;
+      try {
+        await Linking.openURL(argentScheme);
+        console.log('Opened Argent app before transaction');
+      } catch (err) {
+        console.warn('Could not open Argent app:', err);
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const result = await provider.client.request<StarknetTransactionResponse>(
+        {
+          topic: session.topic,
+          chainId: 'starknet:SNSEPOLIA',
           request: {
             method: 'starknet_requestAddInvokeTransaction',
             params: {
@@ -312,11 +404,11 @@ export default function App() {
             <Text
               style={[
                 styles.networkButton,
-                selectedNetwork === 'MAINNET' && styles.selectedNetwork,
+                selectedNetwork === 'SEPOLIA' && styles.selectedNetwork,
               ]}
-              onPress={() => setSelectedNetwork('MAINNET')}
+              onPress={() => setSelectedNetwork('SEPOLIA')}
             >
-              <Text style={styles.networkButtonText}>Mainnet</Text>
+              <Text style={styles.networkButtonText}>SEPOLIA</Text>
             </Text>
           </View>
         )}
@@ -324,8 +416,12 @@ export default function App() {
         {session ? (
           <>
             <Text style={styles.connectedText}>Connected to Argent</Text>
-            <Text style={styles.networkText}>Network: Mainnet</Text>
+            <Text style={styles.networkText}>Network: SEPOLIA</Text>
             <Text style={styles.accountText}>Account: {account}</Text>
+
+            <View style={styles.buttonContainer}>
+              <Button title="Send calldata" onPress={handleCalldata} />
+            </View>
 
             <View style={styles.buttonContainer}>
               <Button
