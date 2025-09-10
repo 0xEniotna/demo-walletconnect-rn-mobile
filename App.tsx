@@ -47,7 +47,6 @@ const initializeProvider = async () => {
 // Define a type for the UniversalProvider instance
 type ProviderInstance = Awaited<ReturnType<typeof initializeProvider>>;
 
-// Define types for Starknet responses
 interface StarknetTransactionResponse {
   transaction_hash: string;
 }
@@ -90,7 +89,6 @@ export default function App() {
         console.log('Provider initialized successfully');
         setProvider(prov);
 
-        // Check if we already have an active session
         const activeSessions = Object.values(prov.session || {});
         if (activeSessions.length > 0) {
           console.log('Found active session:', activeSessions[0]);
@@ -115,7 +113,6 @@ export default function App() {
   const openWallet = async (uri: string) => {
     const encodedUri = encodeURIComponent(uri);
 
-    // We know Argent works, so let's use that as the primary option
     const argentScheme = `argent://wc?uri=${encodedUri}`;
     console.log('Opening Argent with scheme:', argentScheme);
 
@@ -147,7 +144,6 @@ export default function App() {
       console.log(`Using Argent Mobile chain ID: starknet:SNMAIN`);
 
       // Create a connection with the wallet
-      // Include all Starknet methods from the documentation
       const { uri, approval } = await provider.client.connect({
         requiredNamespaces: {
           starknet: {
@@ -225,7 +221,6 @@ export default function App() {
     }
   };
 
-  // Add this new function in the App component
   const handleEthTransfer = async () => {
     if (!provider || !account || !session) {
       setError('Provider or account not initialized');
