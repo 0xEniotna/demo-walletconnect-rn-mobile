@@ -113,21 +113,21 @@ export default function App() {
   const openWallet = async (uri: string) => {
     const encodedUri = encodeURIComponent(uri);
 
-    const argentScheme = `argent://wc?uri=${encodedUri}`;
-    console.log('Opening Argent with scheme:', argentScheme);
+    const readyScheme = `ready://wc?uri=${encodedUri}`;   // ready-dev on testnet
+    console.log('Opening Ready with scheme:', readyScheme);
 
     try {
-      await Linking.openURL(argentScheme);
-      console.log('Successfully opened Argent');
+      await Linking.openURL(readyScheme);
+      console.log('Successfully opened Ready');
     } catch (err) {
-      console.error('Failed to open Argent:', err);
+      console.error('Failed to open Ready:', err);
       setError(
-        'Failed to open Argent wallet. Please make sure it is installed.'
+        'Failed to open Ready wallet. Please make sure it is installed.'
       );
     }
   };
 
-  // Connect to Argent Mobile
+  // Connect to Ready Mobile
   const handleConnect = async () => {
     if (!provider) {
       console.error('Provider is not initialized');
@@ -141,13 +141,13 @@ export default function App() {
 
     try {
       console.log('Attempting to connect...');
-      console.log(`Using Argent Mobile chain ID: starknet:SNMAIN`);
+      console.log(`Using Ready Mobile chain ID: starknet:SNMAIN`);
 
       // Create a connection with the wallet
       const { uri, approval } = await provider.client.connect({
         requiredNamespaces: {
           starknet: {
-            chains: ['starknet:SNMAIN'], // Use Argent's specific chain ID format
+            chains: ['starknet:SNMAIN'], // Use Ready's specific chain ID format
             methods: [
               'starknet_account',
               'starknet_requestAddInvokeTransaction',
@@ -162,7 +162,7 @@ export default function App() {
         console.log('WalletConnect URI:', uri);
         setWcUri(uri);
 
-        // Directly open Argent since we know it works
+        // Directly open Ready since we know it works
         openWallet(uri);
       } else {
         console.warn('No URI available for wallet connection');
@@ -199,7 +199,7 @@ export default function App() {
     }
   };
 
-  // Disconnect from Argent Mobile
+  // Disconnect from Ready Mobile
   const handleDisconnect = async () => {
     if (!provider || !session) {
       console.error(
@@ -236,12 +236,12 @@ export default function App() {
       console.log('ETH transfer params:', JSON.stringify(transaction, null, 2));
 
       // First, try to open the wallet app
-      const argentScheme = `argent://`;
+      const readyScheme = `ready://`;  // or ready-dev
       try {
-        await Linking.openURL(argentScheme);
-        console.log('Opened Argent app before transaction');
+        await Linking.openURL(readyScheme);
+        console.log('Opened Ready app before transaction');
       } catch (err) {
-        console.warn('Could not open Argent app:', err);
+        console.warn('Could not open Ready app:', err);
       }
 
       // Wait a moment for the app to open
